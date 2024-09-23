@@ -1,0 +1,10 @@
+2024/09/23 04:11:49 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:11:53 [emerg] 8#8: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:11:56 [emerg] 8#8: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:11:58 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:00 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:03 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:07 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:14 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:27 [emerg] 9#9: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
+2024/09/23 04:12:54 [emerg] 8#8: a duplicate default server for 0.0.0.0:80 in /etc/nginx/sites-available/gerizim.conf:3
