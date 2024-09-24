@@ -75,7 +75,6 @@ If you run the script with on without the -c flag, the following containers will
   - `portainer`
   - `proxy`
   - `workspace`
-  - `elasticsearch`
 
 ### Example Commands
 

@@ -20,7 +20,7 @@ case "$1" in
             IFS=',' read -r -a containers <<< "$valores"
         else
             # Se não houver -c, usa valores padrão
-            containers=(nginx mysql php-fpm php-worker portainer proxy workspace elasticsearch)
+            containers=(nginx mysql php-fpm php-worker portainer proxy workspace)
         fi
 
         # Monta o comando docker-compose

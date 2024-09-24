@@ -4,10 +4,11 @@
 #--------------------------------------------------------------------------
 #
 
-ARG LARADOCK_PHP_VERSION
-FROM php:${LARADOCK_PHP_VERSION}-alpine
+ARG DOCKERFY_PHP_VERSION
+FROM php:${DOCKERFY_PHP_VERSION}-alpine
 
-ARG LARADOCK_PHP_VERSION
+ARG DOCKERFY_PHP_VERSION
+ARG USERNAME=dev
 
 # If you're in China, or you need to change sources, will be set CHANGE_SOURCE to true in .env.
 
@@ -54,8 +55,8 @@ ENV PUID ${PUID}
 ARG PGID=1000
 ENV PGID ${PGID}
 
-RUN addgroup -g ${PGID} laradock && \
-  adduser -D -G laradock -u ${PUID} laradock
+RUN addgroup -g ${PGID} ${USERNAME} && \
+  adduser -D -G ${USERNAME} -u ${PUID} ${USERNAME}
 
 #Install BZ2:
 ARG INSTALL_BZ2=false
@@ -73,7 +74,7 @@ ARG INSTALL_GNUPG=false
 RUN set -eux; \
   if [ ${INSTALL_GNUPG} = true ]; then \
     apk add --no-cache --no-progress --virtual BUILD_DEPS_PHP_GNUPG gpgme-dev; \
-    if [ ${LARADOCK_PHP_VERSION} = "7.0" ]; then \
+    if [ ${DOCKERFY_PHP_VERSION} = "7.0" ]; then \
       wget -O /tmp/gnupg.tgz "https://pecl.php.net/get/gnupg-1.5.1.tgz"; \
       mkdir -p /tmp/gnupg; \
       tar -C /tmp/gnupg -zxvf /tmp/gnupg.tgz --strip 1; \
@@ -229,7 +230,7 @@ ARG INSTALL_ZIP_ARCHIVE=false
 RUN set -eux; \
   if [ ${INSTALL_ZIP_ARCHIVE} = true ]; then \
   apk --update add libzip-dev && \
-  if [ ${LARADOCK_PHP_VERSION} = "7.3" ] || [ ${LARADOCK_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
+  if [ ${DOCKERFY_PHP_VERSION} = "7.3" ] || [ ${DOCKERFY_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
   docker-php-ext-configure zip; \
   else \
   docker-php-ext-configure zip --with-libzip; \
@@ -293,11 +294,11 @@ ARG INSTALL_AMQP=false
 RUN if [ ${INSTALL_AMQP} = true ]; then \
   docker-php-ext-install sockets; \
   apk --update add -q rabbitmq-c rabbitmq-c-dev && \
-  if [ ${LARADOCK_PHP_VERSION} = "7.3" ] \
-    || [ ${LARADOCK_PHP_VERSION} = "7.2" ] \
-    || [ ${LARADOCK_PHP_VERSION} = "7.1" ] \
-    || [ ${LARADOCK_PHP_VERSION} = "7.0" ] \
-    || [ ${LARADOCK_PHP_VERSION} = "5.6" ]; then \
+  if [ ${DOCKERFY_PHP_VERSION} = "7.3" ] \
+    || [ ${DOCKERFY_PHP_VERSION} = "7.2" ] \
+    || [ ${DOCKERFY_PHP_VERSION} = "7.1" ] \
+    || [ ${DOCKERFY_PHP_VERSION} = "7.0" ] \
+    || [ ${DOCKERFY_PHP_VERSION} = "5.6" ]; then \
     printf "\n" | pecl install amqp-1.11.0; \
   else \
     printf "\n" | pecl install amqp; \
@@ -340,20 +341,6 @@ RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
   && apk del .build-sec; \
   fi \
   ;fi
-
-# Install Phalcon ext
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
-
-RUN if [ "$INSTALL_PHALCON" = true ]; then \
-      apk update \
-      && pecl channel-update pecl.php.net \
-      && apk add --no-cache libpcre32 \
-      && pecl install phalcon-${LARADOCK_PHALCON_VERSION}; \
-      docker-php-ext-enable phalcon; \
-      php -m | grep -q 'phalcon' \
-    ;fi
 
 # Install APCU ext
 ARG INSTALL_APCU=false

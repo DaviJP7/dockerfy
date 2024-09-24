@@ -1,22 +1,9 @@
-#
-#--------------------------------------------------------------------------
-# Image Setup
-#--------------------------------------------------------------------------
-#
-# To edit the 'workspace' base Image, visit its repository on Github
-#    https://github.com/Laradock/workspace
-#
-# To change its version, see the available Tags on the Docker Hub:
-#    https://hub.docker.com/r/laradock/workspace/tags/
-#
-# Note: Base Image name format {image-tag}-{php-version}
-#
-
-ARG LARADOCK_PHP_VERSION
+ARG DOCKERFY_PHP_VERSION
 ARG BASE_IMAGE_TAG_PREFIX=latest
-FROM laradock/workspace:${BASE_IMAGE_TAG_PREFIX}-${LARADOCK_PHP_VERSION}
+FROM laradock/workspace:${BASE_IMAGE_TAG_PREFIX}-${DOCKERFY_PHP_VERSION}
 
-ARG LARADOCK_PHP_VERSION
+ARG DOCKERFY_PHP_VERSION
+ARG USERNAME=dev
 
 # Set Environment Variables
 ENV DEBIAN_FRONTEND noninteractive
@@ -25,18 +12,7 @@ ENV DEBIAN_FRONTEND noninteractive
 USER root
 
 ###########################################################################
-# If you're in China, or you need to change sources, will be set CHANGE_SOURCE to true in .env.
-###########################################################################
-
-ARG CHANGE_SOURCE=false
-RUN if [ ${CHANGE_SOURCE} = true ]; then \
-    # Change application source from ubuntu.com to tuna.tsinghua.edu.cn source
-    sed -i "s@http://.*archive.ubuntu.com@https://mirrors.tuna.tsinghua.edu.cn@g" /etc/apt/sources.list; \
-    sed -i "s@http://.*security.ubuntu.com@https://mirrors.tuna.tsinghua.edu.cn@g" /etc/apt/sources.list; \
-  fi;
-
-###########################################################################
-# Laradock non-root user:
+# Dockerfy non-root user:
 ###########################################################################
 
 # Add a non-root user to prevent files being created with root permissions on host machine.
@@ -49,25 +25,14 @@ ENV PGID ${PGID}
 RUN set -xe; \
     apt-get update -yqq && \
     pecl channel-update pecl.php.net && \
-    groupadd -g ${PGID} laradock && \
-    useradd -l -u ${PUID} -g laradock -m laradock -G docker_env && \
-    usermod -p "*" laradock -s /bin/bash && \
+    groupadd -g ${PGID} ${USERNAME} && \
+    useradd -l -u ${PUID} -g ${USERNAME} -m ${USERNAME} -G docker_env && \
+    usermod -p "*" ${USERNAME} -s /bin/bash && \
     apt-get install -yqq \
       apt-utils \
-      #
-      #--------------------------------------------------------------------------
-      # Mandatory Software's Installation
-      #--------------------------------------------------------------------------
-      #
-      # Mandatory Software's such as ("php-cli", "git", "vim", ....) are
-      # installed on the base image 'laradock/workspace' image. If you want
-      # to add more Software's or remove existing one, you need to edit the
-      # base image (https://github.com/Laradock/workspace).
-      #
-      # next lines are here because there is no auto build on dockerhub see https://github.com/laradock/laradock/pull/1903#issuecomment-463142846
       libzip-dev zip unzip \
       # Install the zip extension
-      php${LARADOCK_PHP_VERSION}-zip \
+      php${DOCKERFY_PHP_VERSION}-zip \
       # nasm
       nasm && \
       php -m | grep -q 'zip'
@@ -100,17 +65,17 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 USER root
 
 COPY ./aliases.sh /root/aliases.sh
-COPY ./aliases.sh /home/laradock/aliases.sh
+COPY ./aliases.sh /home/${USERNAME}/aliases.sh
 
 RUN sed -i 's/\r//' /root/aliases.sh && \
-    sed -i 's/\r//' /home/laradock/aliases.sh && \
-    chown laradock:laradock /home/laradock/aliases.sh && \
+    sed -i 's/\r//' /home/${USERNAME}/aliases.sh && \
+    chown ${USERNAME}:${USERNAME} /home/${USERNAME}/aliases.sh && \
     echo "" >> ~/.bashrc && \
     echo "# Load Custom Aliases" >> ~/.bashrc && \
     echo "source ~/aliases.sh" >> ~/.bashrc && \
 	  echo "" >> ~/.bashrc
 
-USER laradock
+USER ${USERNAME}
 
 RUN echo "" >> ~/.bashrc && \
     echo "# Load Custom Aliases" >> ~/.bashrc && \
@@ -124,13 +89,13 @@ RUN echo "" >> ~/.bashrc && \
 USER root
 
 # Add the composer.json
-COPY ./composer.json /home/laradock/.composer/composer.json
+COPY ./composer.json /home/${USERNAME}/.composer/composer.json
 
 # Add the auth.json for magento 2 credentials
-COPY ./auth.json /home/laradock/.composer/auth.json
+COPY ./auth.json /home/${USERNAME}/.composer/auth.json
 
-# Make sure that ~/.composer belongs to laradock
-RUN chown -R laradock:laradock /home/laradock/.composer
+# Make sure that ~/.composer belongs to ${USERNAME}
+RUN chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.composer
 
 # Export composer vendor path
 RUN echo "" >> ~/.bashrc && \
@@ -146,7 +111,7 @@ RUN set -eux; \
           composer self-update ${COMPOSER_VERSION}; \
       fi
 
-USER laradock
+USER ${USERNAME}
 
 # Check if global install need to be ran
 ARG COMPOSER_GLOBAL_INSTALL=false
@@ -163,7 +128,7 @@ ENV COMPOSER_AUTH_JSON ${COMPOSER_AUTH_JSON}
 
 RUN if [ ${COMPOSER_AUTH_JSON} = false ]; then \
     # remove the file
-    rm /home/laradock/.composer/auth.json \
+    rm /home/${USERNAME}/.composer/auth.json \
 ;fi
 
 ARG COMPOSER_REPO_PACKAGIST
@@ -182,7 +147,7 @@ RUN echo "" >> ~/.bashrc && \
 ###########################################################################
 
 # add ./vendor/bin to non-root user's bashrc (needed for phpunit)
-USER laradock
+USER ${USERNAME}
 
 RUN echo "" >> ~/.bashrc && \
     echo 'export PATH="/var/www/vendor/bin:$PATH"' >> ~/.bashrc
@@ -251,48 +216,48 @@ ARG INSTALL_GNUPG=false
 ARG INSTALL_SSH2=false
 ARG INSTALL_SOAP=false
 ARG INSTALL_XSL=false
-ARG PHP_VERSION=${LARADOCK_PHP_VERSION}
+ARG PHP_VERSION=${DOCKERFY_PHP_VERSION}
 
 RUN set -eux; \
     ###########################################################################
     # BZ2:
     ###########################################################################
     if [ ${INSTALL_BZ2} = true ]; then \
-      apt-get -yqq install php${LARADOCK_PHP_VERSION}-bz2; \
+      apt-get -yqq install php${DOCKERFY_PHP_VERSION}-bz2; \
     fi; \
     ###########################################################################
     # GMP (GNU Multiple Precision):
     ###########################################################################
     if [ ${INSTALL_GMP} = true ]; then \
       # Install the PHP GMP extension
-      apt-get -yqq install php${LARADOCK_PHP_VERSION}-gmp; \
+      apt-get -yqq install php${DOCKERFY_PHP_VERSION}-gmp; \
     fi; \
     ###########################################################################
     # GnuPG:
     ###########################################################################
     if [ ${INSTALL_GNUPG} = true ]; then \
-        apt-get -yqq install php${LARADOCK_PHP_VERSION}-gnupg; \
+        apt-get -yqq install php${DOCKERFY_PHP_VERSION}-gnupg; \
     fi; \
     ###########################################################################
     # SSH2:
     ###########################################################################
     if [ ${INSTALL_SSH2} = true ]; then \
       # Install the PHP SSH2 extension
-      apt-get -yqq install libssh2-1-dev php${LARADOCK_PHP_VERSION}-ssh2; \
+      apt-get -yqq install libssh2-1-dev php${DOCKERFY_PHP_VERSION}-ssh2; \
     fi; \
     ###########################################################################
     # SOAP:
     ###########################################################################
     if [ ${INSTALL_SOAP} = true ]; then \
       # Install the PHP SOAP extension
-      apt-get -yqq install libxml2-dev php${LARADOCK_PHP_VERSION}-soap; \
+      apt-get -yqq install libxml2-dev php${DOCKERFY_PHP_VERSION}-soap; \
     fi; \
     ###########################################################################
     # XSL:
     ###########################################################################
     if [ ${INSTALL_XSL} = true ]; then \
       # Install the PHP XSL extension
-      apt-get -yqq install libxslt-dev php${LARADOCK_PHP_VERSION}-xsl; \
+      apt-get -yqq install libxslt-dev php${DOCKERFY_PHP_VERSION}-xsl; \
     fi
 
 ###########################################################################
@@ -307,19 +272,19 @@ RUN set -eux; \
     # LDAP:
     ###########################################################################
     if [ ${INSTALL_LDAP} = true ]; then \
-        apt-get install -yqq libldap2-dev php${LARADOCK_PHP_VERSION}-ldap; \
+        apt-get install -yqq libldap2-dev php${DOCKERFY_PHP_VERSION}-ldap; \
     fi; \
     ###########################################################################
     # SMB:
     ###########################################################################
     if [ ${INSTALL_SMB} = true ]; then \
-        apt-get install -yqq smbclient php${LARADOCK_PHP_VERSION}-smbclient coreutils; \
+        apt-get install -yqq smbclient php${DOCKERFY_PHP_VERSION}-smbclient coreutils; \
     fi; \
     ###########################################################################
     # IMAP:
     ###########################################################################
     if [ ${INSTALL_IMAP} = true ]; then \
-        apt-get install -yqq php${LARADOCK_PHP_VERSION}-imap; \
+        apt-get install -yqq php${DOCKERFY_PHP_VERSION}-imap; \
     fi; \
     ###########################################################################
     # Subversion:
@@ -340,7 +305,7 @@ ARG XDEBUG_PORT=9003
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
   # Install the xdebug extension
   # https://xdebug.org/docs/compat
-  apt-get install -yqq pkg-config php-xml php${LARADOCK_PHP_VERSION}-xml && \
+  apt-get install -yqq pkg-config php-xml php${DOCKERFY_PHP_VERSION}-xml && \
   if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] || { [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && { [ $(php -r "echo PHP_MINOR_VERSION;") = "4" ] || [ $(php -r "echo PHP_MINOR_VERSION;") = "3" ] ;} ;}; then \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
       pecl install xdebug-3.3.0; \
@@ -358,26 +323,26 @@ RUN if [ ${INSTALL_XDEBUG} = true ]; then \
       fi \
     fi \
   fi && \
-  echo "zend_extension=xdebug.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xdebug.ini \
+  echo "zend_extension=xdebug.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-xdebug.ini \
 ;fi
 
 # ADD for REMOTE debugging
-COPY ./xdebug.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini
+COPY ./xdebug.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini
 
 RUN if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] || { [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && { [ $(php -r "echo PHP_MINOR_VERSION;") = "4" ] || [ $(php -r "echo PHP_MINOR_VERSION;") = "3" ] ;} ;}; then \
-  sed -i "s/xdebug.remote_host=/xdebug.client_host=/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_connect_back=0/xdebug.discover_client_host=false/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_port=9000/xdebug.client_port=${XDEBUG_PORT}/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.profiler_enable=0/; xdebug.profiler_enable=0/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.profiler_output_dir=/xdebug.output_dir=/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_mode=req/; xdebug.remote_mode=req/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_autostart=0/xdebug.start_with_request=yes/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_enable=0/xdebug.mode=debug/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini \
+  sed -i "s/xdebug.remote_host=/xdebug.client_host=/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_connect_back=0/xdebug.discover_client_host=false/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_port=9000/xdebug.client_port=${XDEBUG_PORT}/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.profiler_enable=0/; xdebug.profiler_enable=0/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.profiler_output_dir=/xdebug.output_dir=/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_mode=req/; xdebug.remote_mode=req/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_autostart=0/xdebug.start_with_request=yes/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_enable=0/xdebug.mode=debug/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini \
 ;else \
-  sed -i "s/xdebug.remote_autostart=0/xdebug.remote_autostart=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini && \
-  sed -i "s/xdebug.remote_enable=0/xdebug.remote_enable=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini \
+  sed -i "s/xdebug.remote_autostart=0/xdebug.remote_autostart=1/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini && \
+  sed -i "s/xdebug.remote_enable=0/xdebug.remote_enable=1/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini \
 ;fi
-RUN sed -i "s/xdebug.cli_color=0/xdebug.cli_color=1/" /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/xdebug.ini
+RUN sed -i "s/xdebug.cli_color=0/xdebug.cli_color=1/" /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/xdebug.ini
 
 ###########################################################################
 # pcov:
@@ -390,8 +355,8 @@ ARG INSTALL_PCOV=false
 RUN if [ ${INSTALL_PCOV} = true ]; then \
   if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]  || { [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && [ $(php -r "echo PHP_MINOR_VERSION;") != "0" ]; }; then \
     pecl install pcov && \
-    echo "extension=pcov.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini && \
-    echo "pcov.enabled" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
+    echo "extension=pcov.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/php.ini && \
+    echo "pcov.enabled" >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/php.ini \
   ;fi \
 ;fi
 
@@ -406,7 +371,7 @@ ARG INSTALL_PHPDBG=false
 
 RUN if [ ${INSTALL_PHPDBG} = true ]; then \
     # Load the xdebug extension only with phpunit commands
-    apt-get install -y --force-yes php${LARADOCK_PHP_VERSION}-phpdbg \
+    apt-get install -y --force-yes php${DOCKERFY_PHP_VERSION}-phpdbg \
 ;fi
 
 ###########################################################################
@@ -443,8 +408,8 @@ RUN if [ ${INSTALL_WORKSPACE_SSH} = true ]; then \
         && rm -f /tmp/id_rsa* \
         && chmod 644 /root/.ssh/authorized_keys /root/.ssh/id_rsa.pub \
     && chmod 400 /root/.ssh/id_rsa \
-    && cp -rf /root/.ssh /home/laradock \
-    && chown -R laradock:laradock /home/laradock/.ssh \
+    && cp -rf /root/.ssh /home/${USERNAME} \
+    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.ssh \
 ;fi
 
 ###########################################################################
@@ -458,8 +423,8 @@ RUN if [ ${INSTALL_MONGO} = true ]; then \
     apt-get install -yqq pkg-config && \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
       pecl install mongo; \
-      echo "extension=mongo.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/mongo.ini; \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/mongo.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-mongo.ini; \
+      echo "extension=mongo.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/mongo.ini; \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/mongo.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-mongo.ini; \
       php -m | grep -oiE '^mongo$'; \
     else \
       if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && [ $(php -r "echo PHP_MINOR_VERSION;") != "4" ]; then \
@@ -471,8 +436,8 @@ RUN if [ ${INSTALL_MONGO} = true ]; then \
       else \
         pecl install mongodb; \
       fi; \
-      echo "extension=mongodb.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/mongodb.ini; \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/mongodb.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-mongodb.ini; \
+      echo "extension=mongodb.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/mongodb.ini; \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/mongodb.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-mongodb.ini; \
       php -m | grep -oiE '^mongodb$'; \
     fi; \
 fi
@@ -485,17 +450,17 @@ ARG INSTALL_AMQP=false
 
 RUN if [ ${INSTALL_AMQP} = true ]; then \
     apt-get install -yqq librabbitmq-dev && \
-    if [ ${LARADOCK_PHP_VERSION} = "7.3" ] \
-      || [ ${LARADOCK_PHP_VERSION} = "7.2" ] \
-      || [ ${LARADOCK_PHP_VERSION} = "7.1" ] \
-      || [ ${LARADOCK_PHP_VERSION} = "7.0" ] \
-      || [ ${LARADOCK_PHP_VERSION} = "5.6" ]; then \
+    if [ ${DOCKERFY_PHP_VERSION} = "7.3" ] \
+      || [ ${DOCKERFY_PHP_VERSION} = "7.2" ] \
+      || [ ${DOCKERFY_PHP_VERSION} = "7.1" ] \
+      || [ ${DOCKERFY_PHP_VERSION} = "7.0" ] \
+      || [ ${DOCKERFY_PHP_VERSION} = "5.6" ]; then \
       printf "\n" | pecl install amqp-1.11.0; \
     else \
       printf "\n" | pecl install amqp; \
     fi && \
-    echo "extension=amqp.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/amqp.ini && \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/amqp.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-amqp.ini && \
+    echo "extension=amqp.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/amqp.ini && \
+    ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/amqp.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-amqp.ini && \
     php -m | grep -oiE '^amqp$' \
 ;fi
 
@@ -529,8 +494,8 @@ RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
       make clean >/dev/null && \
       make >/dev/null 2>&1 && \
       make install && \
-      echo "extension=cassandra.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
+      echo "extension=cassandra.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/cassandra.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
     fi \
 ;fi
 
@@ -544,7 +509,7 @@ RUN if [ ${INSTALL_GEARMAN} = true ]; then \
     add-apt-repository -y ppa:ondrej/pkg-gearman && \
     apt-get update && \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
-      apt-get install php${LARADOCK_PHP_VERSION}-gearman -y  \
+      apt-get install php${DOCKERFY_PHP_VERSION}-gearman -y  \
     ; else \
       apt-get install php-gearman -y  \
     ;fi \
@@ -558,7 +523,7 @@ ARG INSTALL_PHPREDIS=false
 
 RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
     apt-get update \
-    && apt-get install -yqq php${LARADOCK_PHP_VERSION}-redis \
+    && apt-get install -yqq php${DOCKERFY_PHP_VERSION}-redis \
 ;fi
 
 ###########################################################################
@@ -583,8 +548,8 @@ RUN set -eux; \
       else \
         echo '' | pecl -q install swoole; \
       fi; \
-      echo "extension=swoole.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini; \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/swoole.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-swoole.ini; \
+      echo "extension=swoole.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/swoole.ini; \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/swoole.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-swoole.ini; \
       php -m | grep -q 'swoole'; \
     fi
 
@@ -600,8 +565,8 @@ RUN set -eux; \
       # Install Php xlswriter Extension
       if [ $(php -r "echo PHP_MAJOR_VERSION;") != "5" ]; then \
         echo '' | pecl -q install xlswriter && \
-        echo "extension=xlswriter.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/xlswriter.ini && \
-        ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/xlswriter.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-xlswriter.ini && \
+        echo "extension=xlswriter.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/xlswriter.ini && \
+        ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/xlswriter.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-xlswriter.ini && \
         php -m | grep -q 'xlswriter'; \
       else \
         echo "PHP Extension for xlswriter is not supported for PHP 5.0"; \
@@ -619,8 +584,8 @@ RUN if [ "${INSTALL_TAINT}" = true ]; then \
     # Install Php TAINT Extension
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
       pecl install taint && \
-      echo "extension=taint.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/taint.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/taint.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-taint.ini && \
+      echo "extension=taint.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/taint.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/taint.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-taint.ini && \
       php -m | grep -q 'taint'; \
     fi \
 ;fi
@@ -644,12 +609,12 @@ ARG INSTALL_INOTIFY=false
 RUN if [ ${INSTALL_INOTIFY} = true ]; then \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
       pecl -q install inotify-0.1.6 && \
-      echo "extension=inotify.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-inotify.ini; \
+      echo "extension=inotify.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/inotify.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/inotify.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-inotify.ini; \
     else \
       pecl -q install inotify && \
-      echo "extension=inotify.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/inotify.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-inotify.ini \
+      echo "extension=inotify.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/inotify.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/inotify.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-inotify.ini \
     ;fi \
 ;fi
 
@@ -666,8 +631,8 @@ RUN if [ ${INSTALL_AST} = true ]; then \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") != "5" ]; then \
         # Install AST extension
         printf "\n" | pecl -q install ast-${AST_VERSION} && \
-        echo "extension=ast.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/ast.ini && \
-        phpenmod -v ${LARADOCK_PHP_VERSION} -s cli ast \
+        echo "extension=ast.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/ast.ini && \
+        phpenmod -v ${DOCKERFY_PHP_VERSION} -s cli ast \
     ;fi \
 ;fi
 
@@ -701,14 +666,14 @@ RUN if [ ${INSTALL_GRAPHVIZ} = true ]; then \
 ARG INSTALL_IONCUBE=false
 
 RUN if [ ${INSTALL_IONCUBE} = true ]; then \
-    if [ ${LARADOCK_PHP_VERSION} != "8.3" ] \
-      && [ ${LARADOCK_PHP_VERSION} != "8.0" ]; then \
+    if [ ${DOCKERFY_PHP_VERSION} != "8.3" ] \
+      && [ ${DOCKERFY_PHP_VERSION} != "8.0" ]; then \
       # Install the php ioncube loader
       curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
       && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
-      && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
-      && echo "zend_extension=ioncube_loader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/ioncube.ini \
-      && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/ioncube.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/0ioncube.ini \
+      && mv /tmp/ioncube/ioncube_loader_lin_${DOCKERFY_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
+      && echo "zend_extension=ioncube_loader.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/ioncube.ini \
+      && ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/ioncube.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/0ioncube.ini \
       && rm -rf /tmp/ioncube* \
       && php -m | grep -oiE '^ionCube Loader$' \
     ;fi \
@@ -729,7 +694,7 @@ RUN if [ ${INSTALL_DRUPAL_CONSOLE} = true ]; then \
     chmod +x /usr/local/bin/drupal \
 ;fi
 
-USER laradock
+USER ${USERNAME}
 
 ###########################################################################
 # Node / NVM:
@@ -754,7 +719,7 @@ ARG NPM_FETCH_RETRY_MINTIMEOUT
 ENV NPM_FETCH_RETRY_MINTIMEOUT ${NPM_FETCH_RETRY_MINTIMEOUT}
 ARG NPM_FETCH_RETRY_MAXTIMEOUT
 ENV NPM_FETCH_RETRY_MAXTIMEOUT ${NPM_FETCH_RETRY_MAXTIMEOUT}
-ENV NVM_DIR /home/laradock/.nvm
+ENV NVM_DIR /home/${USERNAME}/.nvm
 ARG NVM_NODEJS_ORG_MIRROR
 ENV NVM_NODEJS_ORG_MIRROR ${NVM_NODEJS_ORG_MIRROR}
 
@@ -804,7 +769,7 @@ USER root
 
 RUN if [ ${INSTALL_NODE} = true ]; then \
     echo "" >> ~/.bashrc && \
-    echo 'export NVM_DIR="/home/laradock/.nvm"' >> ~/.bashrc && \
+    echo 'export NVM_DIR="/home/${USERNAME}/.nvm"' >> ~/.bashrc && \
     echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> ~/.bashrc \
 ;fi
 
@@ -828,7 +793,7 @@ RUN if [ ${NPM_REGISTRY} ]; then \
 
 # Mount .npmrc into home folder
 COPY ./.npmrc /root/.npmrc
-COPY ./.npmrc /home/laradock/.npmrc
+COPY ./.npmrc /home/${USERNAME}/.npmrc
 
 
 ###########################################################################
@@ -838,12 +803,12 @@ COPY ./.npmrc /home/laradock/.npmrc
 USER root
 
 ARG INSTALL_PNPM=false
-ENV PNPM_HOME="/home/laradock/.local/share/pnpm"
-ENV PATH $PATH:/home/laradock/.local/share/pnpm
+ENV PNPM_HOME="/home/${USERNAME}/.local/share/pnpm"
+ENV PATH $PATH:/home/${USERNAME}/.local/share/pnpm
 
 RUN if [ ${INSTALL_PNPM} = true ]; then \
     echo "" >> ~/.bashrc && \
-    echo 'export PNPM_HOME="/home/laradock/.local/share/pnpm"' >> ~/.bashrc && \
+    echo 'export PNPM_HOME="/home/${USERNAME}/.local/share/pnpm"' >> ~/.bashrc && \
     echo 'export PATH="$PNPM_HOME:$PATH"' >> ~/.bashrc && \
     npx pnpm add -g pnpm \
 ;fi
@@ -853,7 +818,7 @@ RUN if [ ${INSTALL_PNPM} = true ]; then \
 # YARN:
 ###########################################################################
 
-USER laradock
+USER ${USERNAME}
 
 ARG INSTALL_YARN=false
 ARG YARN_VERSION=latest
@@ -875,12 +840,12 @@ USER root
 
 RUN if [ ${INSTALL_YARN} = true ]; then \
     echo "" >> ~/.bashrc && \
-    echo 'export YARN_DIR="/home/laradock/.yarn"' >> ~/.bashrc && \
+    echo 'export YARN_DIR="/home/${USERNAME}/.yarn"' >> ~/.bashrc && \
     echo 'export PATH="$YARN_DIR/bin:$PATH"' >> ~/.bashrc \
 ;fi
 
 # Add PATH for YARN
-ENV PATH $PATH:/home/laradock/.yarn/bin
+ENV PATH $PATH:/home/${USERNAME}/.yarn/bin
 
 ###########################################################################
 # PHP Aerospike:
@@ -923,9 +888,9 @@ RUN set -xe; \
         ;fi \
       ;fi \
     && rm /tmp/aerospike-client-php.tar.gz \
-    && echo 'extension=aerospike.so' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
-    && echo 'aerospike.udf.lua_system_path=/usr/local/aerospike/lua' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
-    && echo 'aerospike.udf.lua_user_path=/usr/local/aerospike/usr-lua' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
+    && echo 'extension=aerospike.so' >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/aerospike.ini \
+    && echo 'aerospike.udf.lua_system_path=/usr/local/aerospike/lua' >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/aerospike.ini \
+    && echo 'aerospike.udf.lua_user_path=/usr/local/aerospike/usr-lua' >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/aerospike.ini \
   ;fi
 
 ###########################################################################
@@ -976,7 +941,7 @@ RUN if [ ${INSTALL_OCI8} = true ]; then \
   else \
     echo "instantclient,/opt/oracle/instantclient_${ORACLE_INSTANT_CLIENT_VERSION}/" | pecl install oci8; \
   fi \
-  && echo "extension=oci8.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
+  && echo "extension=oci8.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/php.ini \
   && php -m | grep -q 'oci8' \
 ;fi
 
@@ -998,7 +963,7 @@ RUN set -xe; \
     else \
       pecl install v8js; \
     fi \
-    && echo "extension=v8js.so" >> /etc/php/${LARADOCK_PHP_VERSION}/cli/php.ini \
+    && echo "extension=v8js.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/cli/php.ini \
     && php -m | grep -q 'v8js' \
   ;fi
 
@@ -1006,7 +971,7 @@ RUN set -xe; \
 # Laravel Envoy:
 ###########################################################################
 
-USER laradock
+USER ${USERNAME}
 
 ARG INSTALL_LARAVEL_ENVOY=false
 
@@ -1020,7 +985,7 @@ RUN if [ ${INSTALL_LARAVEL_ENVOY} = true ]; then \
 # Laravel Installer:
 ###########################################################################
 
-USER laradock
+USER ${USERNAME}
 
 ARG INSTALL_LARAVEL_INSTALLER=false
 
@@ -1135,8 +1100,8 @@ RUN set -eux; \
       ;else \
         pecl install pdo_sqlsrv sqlsrv \
       ;fi && \
-      echo "extension=pdo_sqlsrv.so" > /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-pdo_sqlsrv.ini && \
-      echo "extension=sqlsrv.so"     > /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-sqlsrv.ini && \
+      echo "extension=pdo_sqlsrv.so" > /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-pdo_sqlsrv.ini && \
+      echo "extension=sqlsrv.so"     > /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-sqlsrv.ini && \
       php -m | grep -oiE '^pdo_sqlsrv$' && \
       php -m | grep -oiE '^sqlsrv$' \
     ;fi \
@@ -1172,7 +1137,7 @@ RUN if [ ${INSTALL_IMAGE_OPTIMIZERS} = true ]; then \
     ;fi\
 ;fi
 
-USER laradock
+USER ${USERNAME}
 
 ###########################################################################
 # Symfony:
@@ -1249,7 +1214,7 @@ RUN if [ ${INSTALL_SUPERVISOR} = true ]; then \
   ;fi \
 ;fi
 
-USER laradock
+USER ${USERNAME}
 
 ###########################################################################
 # ImageMagick:
@@ -1280,8 +1245,8 @@ RUN if [ ${INSTALL_IMAGEMAGICK} = true ]; then \
     else \
       pecl install imagick; \
     fi && \
-    echo "extension=imagick.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/imagick.ini && \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/imagick.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-imagick.ini && \
+    echo "extension=imagick.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/imagick.ini && \
+    ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/imagick.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-imagick.ini && \
     php -m | grep -q 'imagick' \
 ;fi
 
@@ -1308,8 +1273,8 @@ RUN if [ ${INSTALL_TERRAFORM} = true ]; then \
 ARG INSTALL_MEMCACHED=false
 
 RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
-  apt-get -y install php${LARADOCK_PHP_VERSION}-igbinary \
-  && apt-get -y install php${LARADOCK_PHP_VERSION}-memcached \
+  apt-get -y install php${DOCKERFY_PHP_VERSION}-igbinary \
+  && apt-get -y install php${DOCKERFY_PHP_VERSION}-memcached \
 ;fi
 
 ###########################################################################
@@ -1358,24 +1323,6 @@ RUN if [ ${INSTALL_DUSK_DEPS} = true ]; then \
 ;fi
 
 ###########################################################################
-# Phalcon:
-###########################################################################
-
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
-
-RUN if [ $INSTALL_PHALCON = true ]; then \
-      apt-get update -yqq \
-      && pecl channel-update pecl.php.net \
-      && apt-get install -yqq libpcre3-dev; \
-      pecl install phalcon-${LARADOCK_PHALCON_VERSION}; \
-      echo "extension=phalcon.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini; \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/50-phalcon.ini; \
-      php -m | grep -q 'phalcon' \
-  ;fi
-
-###########################################################################
 # APCU:
 ###########################################################################
 
@@ -1387,8 +1334,8 @@ RUN if [ ${INSTALL_APCU} = true ]; then \
   else \
     pecl install apcu; \
   fi && \
-  echo "extension=apcu.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/apcu.ini; \
-  ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/apcu.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/50-apcu.ini; \
+  echo "extension=apcu.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/apcu.ini; \
+  ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/apcu.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/50-apcu.ini; \
   php -m | grep -q 'apcu' \
 ;fi
 
@@ -1449,8 +1396,8 @@ RUN set -eux; \
     else \
         echo '' | pecl install yaml; \
     fi; \
-    echo "extension=yaml.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/yaml.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/yaml.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/35-yaml.ini; \
+    echo "extension=yaml.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/yaml.ini; \
+    ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/yaml.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/35-yaml.ini; \
   fi; \
   ###########################################################################
   # RDKAFKA:
@@ -1458,8 +1405,8 @@ RUN set -eux; \
   if [ ${INSTALL_RDKAFKA} = true ]; then \
     apt-get install -yqq librdkafka-dev; \
     pecl install rdkafka; \
-    echo "extension=rdkafka.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/rdkafka.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/rdkafka.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-rdkafka.ini; \
+    echo "extension=rdkafka.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/rdkafka.ini; \
+    ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/rdkafka.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-rdkafka.ini; \
     php -m | grep -q 'rdkafka'; \
   fi; \
   ###########################################################################
@@ -1571,7 +1518,7 @@ RUN if [ ${INSTALL_GIT_PROMPT} = true ]; then \
 ARG INSTALL_XMLRPC=false
 
 RUN if [ ${INSTALL_XMLRPC} = true ]; then \
-    apt-get install -yqq php${LARADOCK_PHP_VERSION}-xmlrpc \
+    apt-get install -yqq php${DOCKERFY_PHP_VERSION}-xmlrpc \
 ;fi
 
 ###########################################################################
@@ -1612,7 +1559,7 @@ RUN if [ ${INSTALL_PROTOC} = true ]; then \
 # Check PHP version:
 ###########################################################################
 
-RUN set -xe; php -v | head -n 1 | grep -q "PHP ${LARADOCK_PHP_VERSION}."
+RUN set -xe; php -v | head -n 1 | grep -q "PHP ${DOCKERFY_PHP_VERSION}."
 
 ###########################################################################
 # Oh My ZSH!
@@ -1628,10 +1575,10 @@ RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
 ARG SHELL_OH_MY_ZSH_AUTOSUGESTIONS=false
 ARG SHELL_OH_MY_ZSH_ALIASES=false
 
-USER laradock
+USER ${USERNAME}
 RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --keep-zshrc" && \
-    sed -i -r 's/^plugins=\(.*?\)$/plugins=(laravel composer)/' /home/laradock/.zshrc && \
+    sed -i -r 's/^plugins=\(.*?\)$/plugins=(laravel composer)/' /home/${USERNAME}/.zshrc && \
     echo '\n\
 bindkey "^[OB" down-line-or-search\n\
 bindkey "^[OC" forward-char\n\
@@ -1643,20 +1590,20 @@ bindkey "^[[3~" delete-char\n\
 bindkey "^[[4~" end-of-line\n\
 bindkey "^[[5~" up-line-or-history\n\
 bindkey "^[[6~" down-line-or-history\n\
-bindkey "^?" backward-delete-char\n' >> /home/laradock/.zshrc && \
+bindkey "^?" backward-delete-char\n' >> /home/${USERNAME}/.zshrc && \
   if [ ${SHELL_OH_MY_ZSH_AUTOSUGESTIONS} = true ]; then \
-    sh -c "git clone https://github.com/zsh-users/zsh-autosuggestions /home/laradock/.oh-my-zsh/custom/plugins/zsh-autosuggestions" && \
-    sed -i 's~plugins=(~plugins=(zsh-autosuggestions ~g' /home/laradock/.zshrc && \
-    sed -i '1iZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20' /home/laradock/.zshrc && \
-    sed -i '1iZSH_AUTOSUGGEST_STRATEGY=(history completion)' /home/laradock/.zshrc && \
-    sed -i '1iZSH_AUTOSUGGEST_USE_ASYNC=1' /home/laradock/.zshrc && \
-    sed -i '1iTERM=xterm-256color' /home/laradock/.zshrc \
+    sh -c "git clone https://github.com/zsh-users/zsh-autosuggestions /home/${USERNAME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions" && \
+    sed -i 's~plugins=(~plugins=(zsh-autosuggestions ~g' /home/${USERNAME}/.zshrc && \
+    sed -i '1iZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20' /home/${USERNAME}/.zshrc && \
+    sed -i '1iZSH_AUTOSUGGEST_STRATEGY=(history completion)' /home/${USERNAME}/.zshrc && \
+    sed -i '1iZSH_AUTOSUGGEST_USE_ASYNC=1' /home/${USERNAME}/.zshrc && \
+    sed -i '1iTERM=xterm-256color' /home/${USERNAME}/.zshrc \
   ;fi && \
   if [ ${SHELL_OH_MY_ZSH_ALIASES} = true ]; then \
-    echo "" >> /home/laradock/.zshrc && \
-    echo "# Load Custom Aliases" >> /home/laradock/.zshrc && \
-    echo "source /home/laradock/aliases.sh" >> /home/laradock/.zshrc && \
-    echo "" >> /home/laradock/.zshrc \
+    echo "" >> /home/${USERNAME}/.zshrc && \
+    echo "# Load Custom Aliases" >> /home/${USERNAME}/.zshrc && \
+    echo "source /home/${USERNAME}/aliases.sh" >> /home/${USERNAME}/.zshrc && \
+    echo "" >> /home/${USERNAME}/.zshrc \
   ;fi \
 ;fi
 
@@ -1669,19 +1616,19 @@ USER root
 USER root
 
 COPY ./aliases.sh /root/aliases.sh
-COPY ./aliases.sh /home/laradock/aliases.sh
+COPY ./aliases.sh /home/${USERNAME}/aliases.sh
 
 RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
     sed -i 's/\r//' /root/aliases.sh && \
-    sed -i 's/\r//' /home/laradock/aliases.sh && \
-    chown laradock:laradock /home/laradock/aliases.sh && \
+    sed -i 's/\r//' /home/${USERNAME}/aliases.sh && \
+    chown ${USERNAME}:${USERNAME} /home/${USERNAME}/aliases.sh && \
     echo "" >> ~/.zshrc && \
     echo "# Load Custom Aliases" >> ~/.zshrc && \
     echo "source ~/aliases.sh" >> ~/.zshrc && \
 	  echo "" >> ~/.zshrc \
 ;fi
 
-USER laradock
+USER ${USERNAME}
 
 RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
     echo "" >> ~/.zshrc && \
@@ -1707,8 +1654,8 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
     else \
       apt-get install -yqq libmpdec-dev \
       && pecl install decimal \
-      && echo "extension=decimal.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini \
-      && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-decimal.ini \
+      && echo "extension=decimal.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/decimal.ini \
+      && ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/decimal.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-decimal.ini \
       && php -m | grep -q 'decimal' \
     ;fi \
 ;fi
@@ -1734,8 +1681,8 @@ RUN set -eux; \
         pecl install zookeeper-0.7.2; \
       fi; \
     fi; \
-    echo "extension=zookeeper.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini; \
-    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-zookeeper.ini; \
+    echo "extension=zookeeper.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/zookeeper.ini; \
+    ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/zookeeper.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-zookeeper.ini; \
     php -m | grep -q 'zookeeper'; \
     fi
 
@@ -1776,8 +1723,8 @@ ARG INSTALL_TRADER=false
 
 RUN if [ ${INSTALL_TRADER} = true ]; then \
     pecl install trader \
-    && echo "extension=trader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini \
-    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-trader.ini \
+    && echo "extension=trader.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/trader.ini \
+    && ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/trader.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-trader.ini \
 ;fi
 
 #
@@ -1800,8 +1747,8 @@ RUN if [ ${INSTALL_ZMQ} = true ]; then \
     && make install \
     && cd .. \
     && rm -fr php-zmq \
-    && echo "extension=zmq.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini \
-    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-zmq.ini \
+    && echo "extension=zmq.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/zmq.ini \
+    && ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/zmq.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-zmq.ini \
 ;fi
 
 ############################################################################
@@ -1821,10 +1768,10 @@ RUN set -eux; \
       make &&\
       make install &&\
       rm /tmp/libevent.tar.gz &&\
-      if [ ! -f /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini ]; then\
-        echo "extension=sockets.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini; \
+      if [ ! -f /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/sockets.ini ]; then\
+        echo "extension=sockets.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/sockets.ini; \
       fi &&\
-      ln -sf /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-sockets.ini && \
+      ln -sf /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/sockets.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/20-sockets.ini && \
       curl -L -o /tmp/event.tar.gz http://pecl.php.net/get/event-3.0.6.tgz &&\
       mkdir -p /tmp/event-php &&\
       tar -C /tmp/event-php -zxvf /tmp/event.tar.gz --strip 1 &&\
@@ -1834,8 +1781,8 @@ RUN set -eux; \
       make &&\
       make install &&\
       rm /tmp/event.tar.gz &&\
-      echo "extension=event.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-event.ini && \
+      echo "extension=event.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/event.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/event.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-event.ini && \
       php -m  | grep -q 'event' \
 ;fi
 

@@ -1,23 +1,9 @@
-#
-#--------------------------------------------------------------------------
-# Image Setup
-#--------------------------------------------------------------------------
-#
-# To edit the 'php-fpm' base Image, visit its repository on Github
-#    https://github.com/Laradock/php-fpm
-#
-# To change its version, see the available Tags on the Docker Hub:
-#    https://hub.docker.com/r/laradock/php-fpm/tags/
-#
-# Note: Base Image name format {image-tag}-{php-version}
-#
-
-ARG LARADOCK_PHP_VERSION
+ARG DOCKERFY_PHP_VERSION
 ARG BASE_IMAGE_TAG_PREFIX=latest
-FROM laradock/php-fpm:${BASE_IMAGE_TAG_PREFIX}-${LARADOCK_PHP_VERSION}
+FROM laradock/php-fpm:${BASE_IMAGE_TAG_PREFIX}-${DOCKERFY_PHP_VERSION}
 
 
-ARG LARADOCK_PHP_VERSION
+ARG DOCKERFY_PHP_VERSION
 
 # Set Environment Variables
 ENV DEBIAN_FRONTEND noninteractive
@@ -40,19 +26,8 @@ RUN set -xe; \
       apt-utils \
       gnupg2 \
       git \
-      #
-      #--------------------------------------------------------------------------
-      # Mandatory Software's Installation
-      #--------------------------------------------------------------------------
-      #
-      # Mandatory Software's such as ("mcrypt", "pdo_mysql", "libssl-dev", ....)
-      # are installed on the base image 'laradock/php-fpm' image. If you want
-      # to add more Software's or remove existing one, you need to edit the
-      # base image (https://github.com/Laradock/php-fpm).
-      #
-      # next lines are here becase there is no auto build on dockerhub see https://github.com/laradock/laradock/pull/1903#issuecomment-463142846
       libzip-dev zip unzip && \
-      if [ ${LARADOCK_PHP_VERSION} = "7.3" ] || [ ${LARADOCK_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
+      if [ ${DOCKERFY_PHP_VERSION} = "7.3" ] || [ ${DOCKERFY_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
         docker-php-ext-configure zip; \
       else \
         docker-php-ext-configure zip --with-libzip; \
@@ -278,7 +253,7 @@ ARG INSTALL_PHPDBG=false
 
 RUN if [ ${INSTALL_PHPDBG} = true ]; then \
     # Load the xdebug extension only with phpunit commands
-    apt-get install -yqq --force-yes php${LARADOCK_PHP_VERSION}-phpdbg \
+    apt-get install -yqq --force-yes php${DOCKERFY_PHP_VERSION}-phpdbg \
 ;fi
 
 ###########################################################################
@@ -428,11 +403,11 @@ RUN set -eux; \
     if [ ${INSTALL_AMQP} = true ]; then \
       # # Install the amqp extension
       apt-get -yqq install librabbitmq-dev; \
-      if [ ${LARADOCK_PHP_VERSION} = "7.3" ] \
-        || [ ${LARADOCK_PHP_VERSION} = "7.2" ] \
-        || [ ${LARADOCK_PHP_VERSION} = "7.1" ] \
-        || [ ${LARADOCK_PHP_VERSION} = "7.0" ] \
-        || [ ${LARADOCK_PHP_VERSION} = "5.6" ]; then \
+      if [ ${DOCKERFY_PHP_VERSION} = "7.3" ] \
+        || [ ${DOCKERFY_PHP_VERSION} = "7.2" ] \
+        || [ ${DOCKERFY_PHP_VERSION} = "7.1" ] \
+        || [ ${DOCKERFY_PHP_VERSION} = "7.0" ] \
+        || [ ${DOCKERFY_PHP_VERSION} = "5.6" ]; then \
         pecl install amqp-1.11.0; \
       else \
         pecl install amqp; \
@@ -471,8 +446,8 @@ RUN if [ ${INSTALL_CASSANDRA} = true ]; then \
       make clean > /dev/null && \
       make > /dev/null 2>&1 && \
       make install && \
-      echo "extension=cassandra.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini && \
-      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
+      echo "extension=cassandra.so" >> /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/cassandra.ini && \
+      ln -s /etc/php/${DOCKERFY_PHP_VERSION}/mods-available/cassandra.ini /etc/php/${DOCKERFY_PHP_VERSION}/cli/conf.d/30-cassandra.ini; \
     fi \
 ;fi
 
@@ -666,12 +641,12 @@ RUN if [ ${INSTALL_OCI8} = true ]; then \
 ARG INSTALL_IONCUBE=false
 
 RUN if [ ${INSTALL_IONCUBE} = true ]; then \
-    if [ ${LARADOCK_PHP_VERSION} != "8.3" ] \
-      && [ ${LARADOCK_PHP_VERSION} != "8.0" ]; then \
+    if [ ${DOCKERFY_PHP_VERSION} != "8.3" ] \
+      && [ ${DOCKERFY_PHP_VERSION} != "8.0" ]; then \
       # Install the php ioncube loader
       curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
       && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
-      && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
+      && mv /tmp/ioncube/ioncube_loader_lin_${DOCKERFY_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
       && printf "zend_extension=ioncube_loader.so\n" > $PHP_INI_DIR/conf.d/0ioncube.ini \
       && rm -rf /tmp/ioncube* \
       && php -m | grep -oiE '^ionCube Loader$' \
@@ -763,7 +738,7 @@ RUN set -eux; \
       # Add Microsoft repo for Microsoft ODBC Driver 13 for Linux \
       apt-get update \
       && apt-get install -yqq apt-transport-https gnupg lsb-release \
-      && if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] && [ ${LARADOCK_PHP_VERSION} != "8.0" ]; then \
+      && if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] && [ ${DOCKERFY_PHP_VERSION} != "8.0" ]; then \
         curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
       ;else \
         curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
@@ -876,22 +851,6 @@ RUN if [ ${INSTALL_CALENDAR} = true ]; then \
     docker-php-ext-configure calendar && \
     docker-php-ext-install calendar \
 ;fi
-
-###########################################################################
-# Phalcon:
-###########################################################################
-
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
-
-RUN if [ $INSTALL_PHALCON = true ]; then \
-      apt-get update -yqq \
-      && pecl channel-update pecl.php.net \
-      && apt-get install -yqq libpcre3-dev; \
-      pecl install phalcon-${LARADOCK_PHALCON_VERSION}; \
-      docker-php-ext-enable phalcon \
-  ;fi
 
 ###########################################################################
 # APCU:
@@ -1086,17 +1045,17 @@ RUN if [ ${INSTALL_WKHTMLTOPDF} = true ]; then \
       xfonts-75dpi \
       wget \
     # && cat /etc/os-release \
-    && if [ ${LARADOCK_PHP_VERSION} = "5.6" ] || \
-        [ ${LARADOCK_PHP_VERSION} = "7.0" ]; then \
+    && if [ ${DOCKERFY_PHP_VERSION} = "5.6" ] || \
+        [ ${DOCKERFY_PHP_VERSION} = "7.0" ]; then \
       wget "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.stretch_${ARCH}.deb"; \
       dpkg -i "wkhtmltox_0.12.6-1.stretch_${ARCH}.deb"; \
-    elif [ ${LARADOCK_PHP_VERSION} = "7.1" ] || \
-        [ ${LARADOCK_PHP_VERSION} = "7.2" ] || \
-        [ ${LARADOCK_PHP_VERSION} = "7.3" ] || \
-        [ ${LARADOCK_PHP_VERSION} = "7.4" ]; then \
+    elif [ ${DOCKERFY_PHP_VERSION} = "7.1" ] || \
+        [ ${DOCKERFY_PHP_VERSION} = "7.2" ] || \
+        [ ${DOCKERFY_PHP_VERSION} = "7.3" ] || \
+        [ ${DOCKERFY_PHP_VERSION} = "7.4" ]; then \
       wget "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.buster_${ARCH}.deb"; \
       dpkg -i "wkhtmltox_0.12.6-1.buster_${ARCH}.deb"; \
-    elif [ ${LARADOCK_PHP_VERSION} = "8.0" ]; then \
+    elif [ ${DOCKERFY_PHP_VERSION} = "8.0" ]; then \
       wget "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.bullseye_${ARCH}.deb"; \
       dpkg -i "wkhtmltox_${WKHTMLTOPDF_VERSION}.bullseye_${ARCH}.deb"; \
     else \
@@ -1176,7 +1135,7 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
     echo 'decimal not support PHP 5.6'; \
   else \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] && \
-        [ ${LARADOCK_PHP_VERSION} != "8.0" ]; then \
+        [ ${DOCKERFY_PHP_VERSION} != "8.0" ]; then \
       curl -L -o /tmp/mpdecimal.tar.gz "https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz"; \
       mkdir -p /tmp/mpdecimal; \
       tar -C /tmp/mpdecimal -zxvf /tmp/mpdecimal.tar.gz --strip 1; \
@@ -1359,7 +1318,7 @@ RUN if [ ${INSTALL_DNSUTILS} = true ]; then \
 # Check PHP version:
 ###########################################################################
 
-RUN set -xe; php -v | grep -q "PHP ${LARADOCK_PHP_VERSION}."
+RUN set -xe; php -v | grep -q "PHP ${DOCKERFY_PHP_VERSION}."
 
 #
 #--------------------------------------------------------------------------

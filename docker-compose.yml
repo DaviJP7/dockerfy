@@ -32,7 +32,7 @@ services:
         - SHELL_OH_MY_ZSH_AUTOSUGESTIONS=${SHELL_OH_MY_ZSH_AUTOSUGESTIONS}
         - SHELL_OH_MY_ZSH_ALIASES=${SHELL_OH_MY_ZSH_ALIASES}
         - BASE_IMAGE_TAG_PREFIX=${WORKSPACE_BASE_IMAGE_TAG_PREFIX}
-        - LARADOCK_PHP_VERSION=${PHP_VERSION}
+        - DOCKERFY_PHP_VERSION=${PHP_VERSION}
         - INSTALL_SUBVERSION=${WORKSPACE_INSTALL_SUBVERSION}
         - INSTALL_BZ2=${WORKSPACE_INSTALL_BZ2}
         - INSTALL_GMP=${WORKSPACE_INSTALL_GMP}
@@ -180,7 +180,7 @@ services:
       args:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
         - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
-        - LARADOCK_PHP_VERSION=${PHP_VERSION}
+        - DOCKERFY_PHP_VERSION=${PHP_VERSION}
         - INSTALL_BZ2=${PHP_FPM_INSTALL_BZ2}
         - INSTALL_ENCHANT=${PHP_FPM_INSTALL_ENCHANT}
         - INSTALL_GMP=${PHP_FPM_INSTALL_GMP}
@@ -292,7 +292,7 @@ services:
       context: ./php-worker
       args:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - LARADOCK_PHP_VERSION=${PHP_VERSION}
+        - DOCKERFY_PHP_VERSION=${PHP_VERSION}
         - INSTALL_BZ2=${PHP_WORKER_INSTALL_BZ2}
         - INSTALL_GD=${PHP_WORKER_INSTALL_GD}
         - INSTALL_IMAGEMAGICK=${PHP_WORKER_INSTALL_IMAGEMAGICK}
@@ -519,37 +519,3 @@ services:
       - workspace
     networks:
       - frontend
-
-  ### ElasticSearch ########################################
-  elasticsearch:
-    restart: always
-    build:
-      context: ./elasticsearch
-      args:
-        - ELK_VERSION=${ELK_VERSION}
-    volumes:
-      - elasticsearch:/usr/share/elasticsearch/data
-    environment:
-      - cluster.name=laradock-cluster
-      - node.name=laradock-node
-      - bootstrap.memory_lock=true
-      - xpack.security.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-      - indices.id_field_data.enabled=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - cluster.initial_master_nodes=laradock-node
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    ports:
-      - "${ELASTICSEARCH_HOST_HTTP_PORT}:9200"
-      - "${ELASTICSEARCH_HOST_TRANSPORT_PORT}:9300"
-    depends_on:
-      - php-fpm
-    networks:
-      - frontend
-      - backend
