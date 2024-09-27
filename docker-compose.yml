@@ -8,19 +8,12 @@ volumes:
     driver: ${VOLUMES_DRIVER}
   postgres:
     driver: ${VOLUMES_DRIVER}
-  mariadb:
-    driver: ${VOLUMES_DRIVER}
   mongo:
     driver: ${VOLUMES_DRIVER}
   phpmyadmin:
     driver: ${VOLUMES_DRIVER}
-  elasticsearch:
-    driver: ${VOLUMES_DRIVER}
-  docker-in-docker:
-    driver: ${VOLUMES_DRIVER}
 
 services:
-
   ### Workspace Utilities ##################################
   workspace:
     restart: always
@@ -147,7 +140,6 @@ services:
         - no_proxy
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-      - docker-in-docker:/certs/client
       - ./php-worker/supervisord.d:/etc/supervisord.d
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
@@ -161,7 +153,6 @@ services:
       - "${WORKSPACE_VITE_PORT}:5173"
     tty: true
     environment:
-      - DOCKER_HOST=tcp://docker-in-docker:2376
       - DOCKER_TLS_VERIFY=1
       - DOCKER_TLS_CERTDIR=/certs
       - DOCKER_CERT_PATH=/certs/client
@@ -169,8 +160,6 @@ services:
     networks:
       - frontend
       - backend
-    links:
-      - docker-in-docker
 
   ### PHP-FPM ##############################################
   php-fpm:
@@ -265,13 +254,11 @@ services:
     volumes:
       - ./php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-      - docker-in-docker:/certs/client
     expose:
       - "9000"
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     environment:
-      - DOCKER_HOST=tcp://docker-in-docker:2376
       - DOCKER_TLS_VERIFY=1
       - DOCKER_TLS_CERTDIR=/certs
       - DOCKER_CERT_PATH=/certs/client
@@ -282,8 +269,6 @@ services:
       - workspace
     networks:
       - backend
-    links:
-      - docker-in-docker
 
   ### PHP Worker ############################################
   php-worker:
@@ -390,30 +375,6 @@ services:
     networks:
       - backend
 
-  ### MariaDB ##############################################
-  mariadb:
-    restart: always
-    build:
-      context: ./mariadb
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-        - MARIADB_VERSION=${MARIADB_VERSION}
-    volumes:
-      - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql
-      - ${MARIADB_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
-    ports:
-      - "${MARIADB_PORT}:3306"
-    environment:
-      - TZ=${WORKSPACE_TIMEZONE}
-      - MYSQL_DATABASE=${MARIADB_DATABASE}
-      - MYSQL_USER=${MARIADB_USER}
-      - MYSQL_PASSWORD=${MARIADB_PASSWORD}
-      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
-    networks:
-      - backend
-
   ### PostgreSQL ###########################################
   postgres:
     restart: always
@@ -448,21 +409,6 @@ services:
     networks:
       - backend
 
-  ### Docker-in-Docker ################################################
-  docker-in-docker:
-    restart: always
-    image: docker:20.10-dind
-    environment:
-      DOCKER_TLS_SAN: DNS:docker-in-docker
-    privileged: true
-    volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-      - docker-in-docker:/certs/client
-    expose:
-      - 2375
-    networks:
-      - backend
-
   ### Portainer ################################################
   portainer:
     restart: always
@@ -477,7 +423,6 @@ services:
       - 9010:9000
     networks:
       - backend
-
     ### Varnish ##########################################
   proxy:
     restart: always
@@ -493,26 +438,6 @@ services:
       - BACKEND_HOST=${VARNISH_PROXY1_BACKEND_HOST}
       - BACKEND_PORT=${VARNISH_BACKEND_PORT}
       - VARNISH_SERVER=${VARNISH_PROXY1_SERVER}
-    ports:
-      - "${VARNISH_PORT}:${VARNISH_PORT}"
-    links:
-      - workspace
-    networks:
-      - frontend
-
-  proxy2:
-    container_name: proxy2
-    build: ./varnish
-    expose:
-      - ${VARNISH_PORT}
-    environment:
-      - VARNISH_CONFIG=${VARNISH_CONFIG}
-      - CACHE_SIZE=${VARNISH_PROXY2_CACHE_SIZE}
-      - VARNISHD_PARAMS=${VARNISHD_PARAMS}
-      - VARNISH_PORT=${VARNISH_PORT}
-      - BACKEND_HOST=${VARNISH_PROXY2_BACKEND_HOST}
-      - BACKEND_PORT=${VARNISH_BACKEND_PORT}
-      - VARNISH_SERVER=${VARNISH_PROXY2_SERVER}
     ports:
       - "${VARNISH_PORT}:${VARNISH_PORT}"
     links:
